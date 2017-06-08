@@ -3,9 +3,34 @@
 const cluster = require('cluster');
 const http = require('http');
 const numCPUs = require('os').cpus().length;
+const util = require('util');
+const Memcached = require('memcached');
+
+let memcached = new Memcached();
+memcached.connect('127.0.0.1:11211', function(err, conn){
+  if (err) {
+    console.log(conn.server);
+  } else {
+    // console.log(conn);
+  }
+});
 
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
+
+  const spawn = require('child_process').spawn;
+  const launch_memcached = spawn('memcached');
+
+  launch_memcached.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+  
+  memcached.set('sum_data', 0, 100000, (err) => {
+    if(err) throw new err;
+  });
+  memcached.get('sum_data', function (err, data) {
+    console.log(data);
+  });
 
   // Fork
   for (let i = 0; i < numCPUs; i++) {
@@ -14,6 +39,7 @@ if (cluster.isMaster) {
 
   cluster.on('exit', (worker, code, signal) => {
     console.log(`worker ${worker.process.pid} died`);
+    cluster.fork();
   });
 } else {
   // Workers can share any TCP connection
@@ -24,15 +50,27 @@ if (cluster.isMaster) {
   // }).listen(8000);
   console.log(`Worker ${process.pid} started`);
 
-  const express = require('express');
-  const app = express();
+  // const express = require('express');
+  // const app = express();
 
-  app.get('/', (req, res) => {
-    setTimeout(()=>{
-      console.log(`WORKED!! ${process.pid}`);
-      res.send(`worker ${process.pid}`);
-    }, 3000);
+  // app.get('/', (req, res) => {
+  //   setTimeout(()=>{
+  //     console.log(`WORKED!! ${process.pid}`);
+  //     res.send(`worker ${process.pid}`);
+  //   }, 3000);
+  // });
+
+  // app.listen(8000);
+
+  process.stdin.resume();
+  process.stdin.setEncoding('utf8');
+
+  process.stdin.on('data', function (text) {
+    let val = text.replace('\n','') * 1;
+    memcached.incr('sum_data', val, function (err) { /* stuff */ });
+    memcached.get('sum_data', function (err, data) {
+      console.log('sum : ', data);
+    });
+    // process.exit();
   });
-
-  app.listen(8000);
 }
