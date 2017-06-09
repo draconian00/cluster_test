@@ -66,11 +66,19 @@ if (cluster.isMaster) {
   process.stdin.setEncoding('utf8');
 
   process.stdin.on('data', function (text) {
-    let val = text.replace('\n','') * 1;
-    memcached.incr('sum_data', val, function (err) { /* stuff */ });
-    memcached.get('sum_data', function (err, data) {
-      console.log('sum : ', data);
-    });
+    if (text === 'get_data\n') {
+      memcached.get('sum_data', function (err, data) {
+        console.log('sum : ', data, " - from ", process.pid);
+      });
+    } else {
+      let val = text.replace('\n','') * 1;
+      memcached.incr('sum_data', val, function (err) { 
+        console.log(err);
+       });
+      memcached.get('sum_data', function (err, data) {
+        console.log('sum : ', data, " - from ", process.pid);
+      });
+    }
     // process.exit();
   });
 }
