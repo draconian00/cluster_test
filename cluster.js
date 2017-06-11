@@ -55,9 +55,13 @@ if (cluster.isMaster) {
 
   app.get('/', (req, res) => {
     let time = req.query.time*1
+    let sum_data;
+    memcached.get('sum_data', (err, data) => {
+      sum_data = data;
+    });
     setTimeout(()=>{
       console.log(`WORKED!! ${process.pid} with time : ${time}ms`);
-      res.send(`worker ${process.pid} with time : ${time}ms`);
+      res.send(`worker ${process.pid} with time : ${time}ms ... memcached data : ${sum_data}`);
     }, time);
   });
 
@@ -74,7 +78,7 @@ if (cluster.isMaster) {
     } else {
       let val = text.replace('\n','') * 1;
       memcached.incr('sum_data', val, function (err) { 
-        console.log(err);
+        if (err) console.log(err);
        });
       memcached.get('sum_data', function (err, data) {
         console.log('sum : ', data, " - from ", process.pid);
