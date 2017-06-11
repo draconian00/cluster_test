@@ -50,17 +50,18 @@ if (cluster.isMaster) {
   // }).listen(8000);
   console.log(`Worker ${process.pid} started`);
 
-  // const express = require('express');
-  // const app = express();
+  const express = require('express');
+  const app = express();
 
-  // app.get('/', (req, res) => {
-  //   setTimeout(()=>{
-  //     console.log(`WORKED!! ${process.pid}`);
-  //     res.send(`worker ${process.pid}`);
-  //   }, 3000);
-  // });
+  app.get('/', (req, res) => {
+    let time = req.query.time*1
+    setTimeout(()=>{
+      console.log(`WORKED!! ${process.pid} with time : ${time}ms`);
+      res.send(`worker ${process.pid} with time : ${time}ms`);
+    }, time);
+  });
 
-  // app.listen(8000);
+  app.listen(8000);
 
   process.stdin.resume();
   process.stdin.setEncoding('utf8');
