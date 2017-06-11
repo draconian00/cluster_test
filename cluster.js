@@ -65,6 +65,11 @@ if (cluster.isMaster) {
     }, time);
   });
 
+  app.get('/post_test', (req, res) => {
+    // let data = req.body.data;
+    res.redirect('/?time=3000');
+  });
+
   app.listen(8000);
 
   process.stdin.resume();
