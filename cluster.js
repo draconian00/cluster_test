@@ -26,10 +26,16 @@ if (cluster.isMaster) {
   });
   
   memcached.set('sum_data', 0, 100000, (err) => {
-    if(err) throw new err;
+    if(err) console.log(err);
   });
-  memcached.get('sum_data', function (err, data) {
-    console.log(data);
+  memcached.set('lock_flag', 0, 100000, (err) => {
+    if(err) console.log(err);
+  });
+
+  // check memcached data
+  memcached.getMulti(['sum_data', 'lock_flag'], function (err, data) {
+    console.log('sum_data:', data.sum_data);
+    console.log('lock_flag:', data.lock_flag);
   });
 
   // Fork
@@ -77,18 +83,58 @@ if (cluster.isMaster) {
 
   process.stdin.on('data', function (text) {
     if (text === 'get_data\n') {
-      memcached.get('sum_data', function (err, data) {
-        console.log('sum : ', data, " - from ", process.pid);
+      memcached.getMulti(['sum_data', 'lock_flag'], function (err, data) {
+        console.log('sum_data:', data.sum_data, "- from", process.pid);
+        console.log('lock_flag:', data.lock_flag, "- from", process.pid);
+      });
+    } else if (text === 'get_flag\n') {
+      memcached.get('lock_flag', (err, data) => {
+        console.log(data);
       });
     } else {
       let val = text.replace('\n','') * 1;
+
+      // get flag
+      let flag = 0;
+      memcached.get('lock_flag', (err, data) => {
+        flag = data;
+      });
+      console.log(flag, typeof(flag));
+      // check flag
+      while (flag === 1) {
+        console.log('inside while loop');
+        memcached.get('lock_flag', (err, data) => {
+          flag = data*1;
+        });
+      }
+      // incr flag
+      memcached.set('lock_flag', 1, (err) => {
+        if (err) console.log(err);
+      });
+
+      // save data
       memcached.incr('sum_data', val, function (err) { 
         if (err) console.log(err);
-       });
+      });
+      // decr flag
+      memcached.set('lock_flag', 0, (err) => {
+        if (err) console.log(err);
+      });
+
       memcached.get('sum_data', function (err, data) {
         console.log('sum : ', data, " - from ", process.pid);
       });
     }
     // process.exit();
+  });
+}
+
+function getLockFlag() {
+  let flag;
+  memcached.get('lock_flag', (err, data) => {
+    console.log('data:', data);
+    flag = data*1;
+    console.log(flag);
+    return flag;
   });
 }
